@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Upload Excel File</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+                background-color: #f4f4f4;
+            }
+
+            h1 {
+                text-align: center;
+            }
+
+            form {
+                margin-bottom: 20px;
+                text-align: center;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+
+            th,
+            td {
+                padding: 12px;
+                border: 1px solid #ddd;
+                text-align: left;
+            }
+
+            th {
+                background-color: #f2f2f2;
+            }
+
+            tr:hover {
+                background-color: #f1f1f1;
+            }
+
+            #filterInput {
+                margin: 20px 0;
+                padding: 10px;
+                width: 100%;
+                box-sizing: border-box;
+                font-size: 16px;
+            }
+
+            .pagination {
+                display: flex;
+                justify-content: center;
+                margin-top: 20px;
+            }
+
+            .pagination button {
+                padding: 10px;
+                margin: 0 5px;
+                border: 1px solid #ddd;
+                background-color: #fff;
+                cursor: pointer;
+            }
+
+            .pagination button.active {
+                background-color: #007bff;
+                color: #fff;
+                border-color: #007bff;
+            }
+
+            .pagination button.disabled {
+                background-color: #f2f2f2;
+                cursor: not-allowed;
+            }
+
+        </style>
+    </head>
+
+    <body>
+        <h1>Upload Excel File</h1>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="file" name="excel_file" accept=".xls,.xlsx">
+            <button type="submit">Upload</button>
+        </form>
+
+        {% if excel_data %}
+        {% if excel_data.error %}
+        <p style="color: red;">Error: {{ excel_data.error }}</p>
+        {% else %}
+        <h2>Excel File Content:</h2>
+        <input type="text" id="filterInput" onkeyup="filterTable()" placeholder="Search for data...">
+        <table id="excelTable">
+            <thead>
+                <tr>
+                    {% for header in excel_data.headers %}
+                    <th>{{ header }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                {% for row in excel_data.rows %}
+                <tr>
+                    {% for cell in row %}
+                    <td>{{ cell }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="pagination" id="paginationControls"></div>
+
+        {% endif %}
+        {% endif %}
+
+        <script>
+            // Pagination variables
+            const rowsPerPage = 10;
+            let currentPage = 1;
+            const tableBody = document.getElementById('tableBody');
+            const rows = tableBody.getElementsByTagName('tr');
+            const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+            function displayPage(page) {
+                currentPage = page;
+                const start = (page - 1) * rowsPerPage;
+                const end = start + rowsPerPage;
+
+                for (let i = 0; i < rows.length; i++) {
+                    rows[i].style.display = (i >= start && i < end) ? '' : 'none';
+                }
+
+                updatePaginationControls();
+            }
+
+            function updatePaginationControls() {
+                const paginationControls = document.getElementById('paginationControls');
+                paginationControls.innerHTML = '';
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const button = document.createElement('button');
+                    button.textContent = i;
+                    button.className = i === currentPage ? 'active' : '';
+                    button.disabled = i === currentPage;
+                    button.addEventListener('click', () => displayPage(i));
+                    paginationControls.appendChild(button);
+                }
+            }
+
+            // Initial display
+            displayPage(currentPage);
+
+            // Filter function
+            function filterTable() {
+                const input = document.getElementById('filterInput');
+                const filter = input.value.toUpperCase();
+
+                let visibleRows = 0;
+                for (let i = 0; i < rows.length; i++) {
+                    const tds = rows[i].getElementsByTagName('td');
+                    let rowContainsFilter = false;
+
+                    for (let j = 0; j < tds.length; j++) {
+                        const cell = tds[j];
+                        if (cell && cell.innerText.toUpperCase().indexOf(filter) > -1) {
+                            rowContainsFilter = true;
+                            break;
+                        }
+                    }
+
+                    if (rowContainsFilter) {
+                        rows[i].style.display = '';
+                        visibleRows++;
+                    } else {
+                        rows[i].style.display = 'none';
+                    }
+                }
+
+                const newTotalPages = Math.ceil(visibleRows / rowsPerPage);
+                currentPage = 1;
+                totalPages = newTotalPages;
+                updatePaginationControls();
+                displayPage(currentPage);
+            }
+        </script>
+    </body>
+
+</html>
